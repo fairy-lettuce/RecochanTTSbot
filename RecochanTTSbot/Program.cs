@@ -20,8 +20,6 @@ namespace TextToSpeechBot
 {
 	public class Program
 	{
-		static string TOKEN_NAME = "RECO_TOKEN";
-
 		private DiscordSocketClient client;
 		private InteractionService interaction;
 		private ulong testGuildId;
