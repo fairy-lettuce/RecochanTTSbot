@@ -22,6 +22,7 @@ namespace TextToSpeechBot
 	{
 		private DiscordSocketClient client;
 		private InteractionService interaction;
+		private AudioHandler audio;
 		private ulong testGuildId;
 
 		public static Task Main(string[] args) => new Program().MainAsync();
@@ -63,6 +64,7 @@ namespace TextToSpeechBot
 				.AddSingleton<DiscordSocketClient>()
 				.AddSingleton(x => new InteractionService(x.GetRequiredService<DiscordSocketClient>()))
 				.AddSingleton<CommandHandler>()
+				.AddSingleton<AudioHandler>()
 				.BuildServiceProvider();
 		}
 
