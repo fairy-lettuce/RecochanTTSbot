@@ -23,13 +23,15 @@ namespace TextToSpeechBot
 	{
 		private IAudioChannel audio;
 		private IAudioClient audioClient;
+		private VoicevoxController voicevox;
 
 		private ConcurrentQueue<string> queue;
 
 		private readonly AutoResetEvent condition = new AutoResetEvent(false);
 
-		public AudioHandler()
+		public AudioHandler(VoicevoxController voicevox)
 		{
+			this.voicevox = voicevox;
 			queue = new ConcurrentQueue<string>();
 			var thread = new Thread(() => ReadVoiceWorker());
 			thread.Start();
@@ -45,7 +47,7 @@ namespace TextToSpeechBot
 					Console.WriteLine($"Playing {tempFile}");
 					try
 					{
-						StartReadVoiceFile(tempFile);
+						Task.Run(() => StartReadVoiceFile(tempFile));
 						Console.WriteLine("Wait...");
 						condition.WaitOne();
 						Console.WriteLine("Ok!");
@@ -72,17 +74,26 @@ namespace TextToSpeechBot
 			audioClient = null;
 		}
 
-		public async Task EnqueueReadVoiceFile(string path)
+		public async Task EnqueueReadVoice(string text)
+		{
+			Console.WriteLine($"Reading voice: {text}");
+			var tempFile = await voicevox.GenerateSoundFile(text);
+			await EnqueueReadVoiceFile(tempFile);
+		}
+
+		public Task EnqueueReadVoiceFile(string path)
 		{
 			if (!File.Exists(path))
 			{
 				Console.WriteLine("File not found!");
-				return;
+				return Task.CompletedTask;
 			}
 
 			queue.Enqueue(path);
 
 			condition.Set();
+
+			return Task.CompletedTask;
 		}
 
 		private async Task StartReadVoiceFile(string path)

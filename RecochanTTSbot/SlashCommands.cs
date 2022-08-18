@@ -24,12 +24,14 @@ namespace TextToSpeechBot
 		private CommandHandler commandHandler;
 		private AudioHandler audio;
 		private MessageHandler message;
+		private VoicevoxController voicevox;
 
-		public SlashCommands(CommandHandler commandHandler, AudioHandler audio, MessageHandler message)
+		public SlashCommands(CommandHandler commandHandler, AudioHandler audio, MessageHandler message, VoicevoxController voicevox)
 		{
 			this.commandHandler = commandHandler;
 			this.audio = audio;
 			this.message = message;
+			this.voicevox = voicevox;
 		}
 
 		[SlashCommand(name: "join", description: "Lets Reco-chan join your voice channel!", runMode: RunMode.Async)]
@@ -46,7 +48,7 @@ namespace TextToSpeechBot
 			message.Channel = Context.Channel;
 
 			await Context.Interaction.RespondAsync("おはよ！");
-			Task.Run(() => audio.EnqueueReadVoiceFile("ohayo.wav"));
+			Task.Run(() => audio.EnqueueReadVoice("おはよっ！"));
 		}
 
 		[SlashCommand(name: "leave", description: "Disconnects Reco-chan from voice channel.", runMode: RunMode.Async)]

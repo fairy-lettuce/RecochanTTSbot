@@ -24,6 +24,7 @@ namespace TextToSpeechBot
 		private InteractionService interaction;
 		private AudioHandler audio;
 		private MessageHandler messageHandler;
+		private VoicevoxController voicevox;
 		private ulong testGuildId;
 
 		public static Task Main(string[] args) => new Program().MainAsync();
@@ -46,12 +47,12 @@ namespace TextToSpeechBot
 				interaction = services.GetRequiredService<InteractionService>();
 				audio = services.GetRequiredService<AudioHandler>();
 				messageHandler = services.GetRequiredService<MessageHandler>();
+				voicevox = services.GetRequiredService<VoicevoxController>();
 
 				client.Log += Log;
 				interaction.Log += Log;
 				client.Ready += ClientReady;
 				client.MessageReceived += MessageReceived;
-
 
 				await client.LoginAsync(TokenType.Bot, token);
 				await client.StartAsync();
@@ -69,12 +70,14 @@ namespace TextToSpeechBot
 				.AddSingleton<CommandHandler>()
 				.AddSingleton<AudioHandler>()
 				.AddSingleton<MessageHandler>()
+				.AddSingleton<VoicevoxController>()
 				.BuildServiceProvider();
 		}
 
-		private async Task Log(LogMessage msg)
+		private Task Log(LogMessage msg)
 		{
 			Console.WriteLine($"{msg.ToString()}");
+			return Task.CompletedTask;
 		}
 
 		private async Task MessageReceived(SocketMessage messageParam)
@@ -86,14 +89,14 @@ namespace TextToSpeechBot
 			if (message.Author.IsBot) { return; }
 
 			var context = new SocketCommandContext(client, message);
-			if (context.Channel == messageHandler.Channel) { return; }
+			if (context.Channel != messageHandler.Channel) { return; }
 
 			await context.Channel.SendMessageAsync(message.Content + "……って言いました？");
 
-			var voicevox = new VoicevoxController();
-			var path = await voicevox.GenerateSoundFile(message.Content);
-			audio.EnqueueReadVoiceFile(path);
+			await audio.EnqueueReadVoice(message.Content);
 		}
+
+		
 
 		public async Task ClientReady()
 		{
