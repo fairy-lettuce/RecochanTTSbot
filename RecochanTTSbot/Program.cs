@@ -53,6 +53,7 @@ namespace TextToSpeechBot
 				interaction.Log += Log;
 				client.Ready += ClientReady;
 				client.MessageReceived += MessageReceived;
+				client.UserVoiceStateUpdated += UserVoiceStateUpdated;
 
 				await client.LoginAsync(TokenType.Bot, token);
 				await client.StartAsync();
@@ -96,7 +97,24 @@ namespace TextToSpeechBot
 			await audio.EnqueueReadVoice(message.Content);
 		}
 
-		
+		private async Task UserVoiceStateUpdated(SocketUser user, SocketVoiceState stateBefore, SocketVoiceState stateAfter)
+		{
+			if (!audio.IsInVoiceChannel) { return; }
+			if (user.Id == client.CurrentUser.Id) { return; }
+			if (stateBefore.VoiceChannel is not null && stateAfter.VoiceChannel is null)
+			{
+				await audio.EnqueueReadVoice($"{user.Username}、ばいばい！");
+				if (stateBefore.VoiceChannel.ConnectedUsers.Count == 1)
+				{
+					await messageHandler.Channel.SendMessageAsync("誰もいなくなったみたいだね、またね～！");
+					await audio.LeaveVoiceChannel();
+				}
+			}
+			else if (stateBefore.VoiceChannel is null && stateAfter.VoiceChannel is not null)
+			{
+				await audio.EnqueueReadVoice($"{user.Username}、やっほー！");
+			}
+		}
 
 		public async Task ClientReady()
 		{

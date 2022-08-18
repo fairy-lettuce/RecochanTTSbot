@@ -29,6 +29,8 @@ namespace TextToSpeechBot
 
 		private readonly AutoResetEvent condition = new AutoResetEvent(false);
 
+		public bool IsInVoiceChannel { get => audio != null; }
+
 		public AudioHandler(VoicevoxController voicevox)
 		{
 			this.voicevox = voicevox;
