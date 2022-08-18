@@ -54,7 +54,7 @@ namespace TextToSpeechBot
 				queryData = response.Content.ReadAsStringAsync().GetAwaiter().GetResult();
 
 				content = new StringContent(queryData, Encoding.UTF8, @"application/json");
-				response = httpClient.PostAsync($"{url}/synthesis?speaker=1", content).GetAwaiter().GetResult();
+				response = httpClient.PostAsync($"{url}/synthesis?speaker=0", content).GetAwaiter().GetResult();
 				if (response.StatusCode != HttpStatusCode.OK) { return null; }
 
 				var soundData = response.Content.ReadAsStreamAsync().GetAwaiter().GetResult();
