@@ -23,6 +23,7 @@ namespace TextToSpeechBot
 		private DiscordSocketClient client;
 		private InteractionService interaction;
 		private AudioHandler audio;
+		private MessageHandler messageHandler;
 		private ulong testGuildId;
 
 		public static Task Main(string[] args) => new Program().MainAsync();
@@ -44,12 +45,13 @@ namespace TextToSpeechBot
 				client = services.GetRequiredService<DiscordSocketClient>();
 				interaction = services.GetRequiredService<InteractionService>();
 				audio = services.GetRequiredService<AudioHandler>();
+				messageHandler = services.GetRequiredService<MessageHandler>();
 
 				client.Log += Log;
 				interaction.Log += Log;
 				client.Ready += ClientReady;
 				client.MessageReceived += MessageReceived;
-				
+
 
 				await client.LoginAsync(TokenType.Bot, token);
 				await client.StartAsync();
@@ -66,6 +68,7 @@ namespace TextToSpeechBot
 				.AddSingleton(x => new InteractionService(x.GetRequiredService<DiscordSocketClient>()))
 				.AddSingleton<CommandHandler>()
 				.AddSingleton<AudioHandler>()
+				.AddSingleton<MessageHandler>()
 				.BuildServiceProvider();
 		}
 
@@ -83,11 +86,13 @@ namespace TextToSpeechBot
 			if (message.Author.IsBot) { return; }
 
 			var context = new SocketCommandContext(client, message);
-			await context.Channel.SendMessageAsync(message.Content + "って言いました？");
+			if (context.Channel == messageHandler.Channel) { return; }
+
+			await context.Channel.SendMessageAsync(message.Content + "……って言いました？");
 
 			var voicevox = new VoicevoxController();
-			var path = voicevox.GenerateSoundFile(message.Content);
-			await audio.ReadVoiceFile(path);
+			var path = await voicevox.GenerateSoundFile(message.Content);
+			audio.EnqueueReadVoiceFile(path);
 		}
 
 		public async Task ClientReady()

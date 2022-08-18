@@ -72,7 +72,7 @@ namespace TextToSpeechBot
 			audioClient = null;
 		}
 
-		public async Task ReadVoiceFile(string path)
+		public async Task EnqueueReadVoiceFile(string path)
 		{
 			if (!File.Exists(path))
 			{

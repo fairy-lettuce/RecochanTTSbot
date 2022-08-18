@@ -38,7 +38,7 @@ namespace TextToSpeechBot
 		/// </summary>
 		/// <param name="text">生成する音声ファイルの文字列</param>
 		/// <returns>生成した音声ファイルのパス</returns>
-		public string GenerateSoundFile(string text)
+		public async Task<string> GenerateSoundFile(string text)
 		{
 			string tempFile = Path.GetTempFileName();
 			tempFile = Path.ChangeExtension(tempFile, ".wav");
@@ -61,7 +61,7 @@ namespace TextToSpeechBot
 
 				using (var fileStream = new FileStream(tempFile, FileMode.Create, FileAccess.Write, FileShare.None))
 				{
-					soundData.CopyTo(fileStream);
+					await soundData.CopyToAsync(fileStream);
 				}
 			}
 			return tempFile;

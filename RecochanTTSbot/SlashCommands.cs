@@ -23,11 +23,13 @@ namespace TextToSpeechBot
 		public InteractionService Interaction { get; set; }
 		private CommandHandler commandHandler;
 		private AudioHandler audio;
+		private MessageHandler message;
 
-		public SlashCommands(CommandHandler commandHandler, AudioHandler audio)
+		public SlashCommands(CommandHandler commandHandler, AudioHandler audio, MessageHandler message)
 		{
 			this.commandHandler = commandHandler;
 			this.audio = audio;
+			this.message = message;
 		}
 
 		[SlashCommand(name: "join", description: "Lets Reco-chan join your voice channel!", runMode: RunMode.Async)]
@@ -41,9 +43,10 @@ namespace TextToSpeechBot
 			if (currentVc != null) { await Context.Interaction.RespondAsync("もう別のところにいるよ、ごめんね！");return; }
 
 			await audio.JoinVoiceChannel(vc);
+			message.Channel = Context.Channel;
 
 			await Context.Interaction.RespondAsync("おはよ！");
-			Task.Run(() => audio.ReadVoiceFile("ohayo.wav"));
+			Task.Run(() => audio.EnqueueReadVoiceFile("ohayo.wav"));
 		}
 
 		[SlashCommand(name: "leave", description: "Disconnects Reco-chan from voice channel.", runMode: RunMode.Async)]
@@ -56,6 +59,8 @@ namespace TextToSpeechBot
 			if (currentVc == null) { await Context.Interaction.RespondAsync("今私はどのボイスチャンネルにもいないよ！"); return; }
 
 			if (vc != currentVc) { await Context.Interaction.RespondAsync("あなたと私、違うボイスチャンネルにいるみたい……"); return; }
+
+			message.Channel = null;
 
 			await audio.LeaveVoiceChannel();
 			await Context.Interaction.RespondAsync("またね！");
