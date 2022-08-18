@@ -42,8 +42,8 @@ namespace TextToSpeechBot
 
 			await audio.JoinVoiceChannel(vc);
 
-			Task.Run(() => audio.ReadVoiceFile("ohayo.wav"));
 			await Context.Interaction.RespondAsync("おはよ！");
+			Task.Run(() => audio.ReadVoiceFile("ohayo.wav"));
 		}
 
 		[SlashCommand(name: "leave", description: "Disconnects Reco-chan from voice channel.", runMode: RunMode.Async)]

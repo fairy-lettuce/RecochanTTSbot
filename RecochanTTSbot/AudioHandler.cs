@@ -7,6 +7,7 @@ using Discord.Net.WebSockets;
 using Discord.WebSocket;
 using Microsoft.Extensions.DependencyInjection;
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
@@ -23,15 +24,45 @@ namespace TextToSpeechBot
 		private IAudioChannel audio;
 		private IAudioClient audioClient;
 
+		private ConcurrentQueue<string> queue;
+
+		private readonly AutoResetEvent condition = new AutoResetEvent(false);
+
 		public AudioHandler()
 		{
+			queue = new ConcurrentQueue<string>();
+			var thread = new Thread(() => ReadVoiceWorker());
+			thread.Start();
+		}
 
+		private async Task ReadVoiceWorker()
+		{
+			while (true)
+			{
+				var success = queue.TryDequeue(out string tempFile);
+				if (success)
+				{
+					Console.WriteLine($"Playing {tempFile}");
+					try
+					{
+						StartReadVoiceFile(tempFile);
+						Console.WriteLine("Wait...");
+						condition.WaitOne();
+						Console.WriteLine("Ok!");
+					}
+					finally
+					{
+						// 
+					}
+				}
+			}
 		}
 
 		public async Task JoinVoiceChannel(IAudioChannel audio)
-		{			
+		{
 			this.audio = audio;
 			audioClient = await audio.ConnectAsync();
+			condition.Set();
 		}
 
 		public async Task LeaveVoiceChannel()
@@ -49,9 +80,16 @@ namespace TextToSpeechBot
 				return;
 			}
 
-			using (var ffmpeg = StartFFmpegProcess(path))
-			using (var output = ffmpeg.StandardOutput.BaseStream)
-			using (var discord = audioClient.CreatePCMStream(AudioApplication.Voice))
+			queue.Enqueue(path);
+
+			condition.Set();
+		}
+
+		private async Task StartReadVoiceFile(string path)
+		{
+			var ffmpeg = StartFFmpegProcess(path);
+			var output = ffmpeg.StandardOutput.BaseStream;
+			var discord = audioClient.CreatePCMStream(AudioApplication.Voice);
 			{
 				try { await output.CopyToAsync(discord); }
 				finally { await discord.FlushAsync(); }
@@ -63,7 +101,7 @@ namespace TextToSpeechBot
 			return Process.Start(new ProcessStartInfo
 			{
 				FileName = "ffmpeg",
-				Arguments = $"-hide_banner -report -loglevel panic -i \"{path}\" -ac 2 -f s16le -ar 48000 -af \"apad=whole_dur=1\" pipe:1",
+				Arguments = $"-hide_banner -report -loglevel panic -i \"{path}\" -ac 2 -f s16le -ar 48000 -af \"apad=whole_dur=1\" pipe:1", // if the last part does not replay, use "-af \"apad=whole_dur=1\" ".
 				UseShellExecute = false,
 				RedirectStandardOutput = true,
 			});

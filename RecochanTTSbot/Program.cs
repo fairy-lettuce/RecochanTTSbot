@@ -43,17 +43,18 @@ namespace TextToSpeechBot
 			{
 				client = services.GetRequiredService<DiscordSocketClient>();
 				interaction = services.GetRequiredService<InteractionService>();
+				audio = services.GetRequiredService<AudioHandler>();
 
 				client.Log += Log;
 				interaction.Log += Log;
 				client.Ready += ClientReady;
 				client.MessageReceived += MessageReceived;
+				
 
 				await client.LoginAsync(TokenType.Bot, token);
 				await client.StartAsync();
 
 				await services.GetRequiredService<CommandHandler>().InitializeAsync();
-
 				await Task.Delay(Timeout.Infinite);
 			}
 		}
@@ -68,10 +69,9 @@ namespace TextToSpeechBot
 				.BuildServiceProvider();
 		}
 
-		private Task Log(LogMessage msg)
+		private async Task Log(LogMessage msg)
 		{
 			Console.WriteLine($"{msg.ToString()}");
-			return Task.CompletedTask;
 		}
 
 		private async Task MessageReceived(SocketMessage messageParam)
@@ -84,6 +84,10 @@ namespace TextToSpeechBot
 
 			var context = new SocketCommandContext(client, message);
 			await context.Channel.SendMessageAsync(message.Content + "って言いました？");
+
+			var voicevox = new VoicevoxController();
+			var path = voicevox.GenerateSoundFile(message.Content);
+			await audio.ReadVoiceFile(path);
 		}
 
 		public async Task ClientReady()
@@ -107,7 +111,7 @@ namespace TextToSpeechBot
 #if DEBUG
 			return true;
 #else
-                return false;
+			return false;
 #endif
 		}
 	}
