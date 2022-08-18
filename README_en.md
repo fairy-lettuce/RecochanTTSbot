@@ -10,6 +10,6 @@ To be written...
 
 This bot uses slash commands. Type `/join` to connect to a voice channel, and `/leave` to disconnect from it.
 
-### その他
+### Other
 
 To be implemented. Hang on for a while!
