@@ -12,6 +12,7 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
 using System.Reflection;
+using System.Runtime.InteropServices;
 using System.Text;
 using System.Text.Json;
 using System.Threading;
@@ -27,17 +28,23 @@ namespace TextToSpeechBot
 
 		private ConcurrentQueue<string> queue;
 
-		private readonly AutoResetEvent condition = new AutoResetEvent(false);
+		private readonly CountdownEvent condition;
 
-		public bool IsInVoiceChannel { get => audio != null; }
+		private AudioOutStream audioOutStream;
+
+		public bool IsInVoiceChannel => audio != null;
 
 		public AudioHandler(VoicevoxController voicevox)
 		{
+			condition = new CountdownEvent(1);
 			this.voicevox = voicevox;
 			queue = new ConcurrentQueue<string>();
+			isReadVoiceWorkerWorking = false;
 			var thread = new Thread(() => ReadVoiceWorker());
 			thread.Start();
 		}
+
+		private bool isReadVoiceWorkerWorking;
 
 		private async Task ReadVoiceWorker()
 		{
@@ -46,18 +53,25 @@ namespace TextToSpeechBot
 				var success = queue.TryDequeue(out string tempFile);
 				if (success)
 				{
+					isReadVoiceWorkerWorking = true;
 					Console.WriteLine($"Playing {tempFile}");
 					try
 					{
-						Task.Run(() => StartReadVoiceFile(tempFile));
+						var task = Task.Run(() => StartReadVoiceFile(tempFile));
 						Console.WriteLine("Wait...");
-						condition.WaitOne();
+						task.Wait();
 						Console.WriteLine("Ok!");
 					}
 					finally
 					{
-						// 
+
 					}
+				}
+				else
+				{
+					isReadVoiceWorkerWorking = false;
+					condition.Reset();
+					condition.Wait();
 				}
 			}
 		}
@@ -66,7 +80,8 @@ namespace TextToSpeechBot
 		{
 			this.audio = audio;
 			audioClient = await audio.ConnectAsync();
-			condition.Set();
+			audioOutStream = audioClient.CreatePCMStream(AudioApplication.Voice);
+			if (!isReadVoiceWorkerWorking) condition.Signal();
 		}
 
 		public async Task LeaveVoiceChannel()
@@ -78,9 +93,9 @@ namespace TextToSpeechBot
 
 		public async Task EnqueueReadVoice(string text)
 		{
-			Console.WriteLine($"Reading voice: {text}");
 			var tempFile = await voicevox.GenerateSoundFile(text);
 			await EnqueueReadVoiceFile(tempFile);
+			Console.WriteLine($"Reading voice enqueued: {text}");
 		}
 
 		public Task EnqueueReadVoiceFile(string path)
@@ -93,19 +108,19 @@ namespace TextToSpeechBot
 
 			queue.Enqueue(path);
 
-			condition.Set();
+			if (!isReadVoiceWorkerWorking) condition.Signal();
 
 			return Task.CompletedTask;
 		}
 
 		private async Task StartReadVoiceFile(string path)
 		{
-			var ffmpeg = StartFFmpegProcess(path);
-			var output = ffmpeg.StandardOutput.BaseStream;
-			var discord = audioClient.CreatePCMStream(AudioApplication.Voice);
+			Console.WriteLine($"Reading voice file: {path}");
+
+			using (var ffmpeg = StartFFmpegProcess(path))
 			{
-				try { await output.CopyToAsync(discord); }
-				finally { await discord.FlushAsync(); }
+				try { await ffmpeg.StandardOutput.BaseStream.CopyToAsync(audioOutStream); }
+				finally { await audioOutStream.FlushAsync(); }
 			}
 		}
 
@@ -114,7 +129,7 @@ namespace TextToSpeechBot
 			return Process.Start(new ProcessStartInfo
 			{
 				FileName = "ffmpeg",
-				Arguments = $"-hide_banner -report -loglevel panic -i \"{path}\" -ac 2 -f s16le -ar 48000 -af \"apad=whole_dur=1\" pipe:1", // if the last part does not replay, use "-af \"apad=whole_dur=1\" ".
+				Arguments = $"-hide_banner -loglevel panic -i \"{path}\" -ac 2 -f s16le -ar 48000 pipe:1",
 				UseShellExecute = false,
 				RedirectStandardOutput = true,
 			});

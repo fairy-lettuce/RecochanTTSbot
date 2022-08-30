@@ -81,15 +81,14 @@ namespace TextToSpeechBot
 			return Task.CompletedTask;
 		}
 
-		private async Task MessageReceived(SocketMessage messageParam)
+		private async Task MessageReceived(SocketMessage message)
 		{
-			var message = messageParam as SocketUserMessage;
 			Console.WriteLine($"On channel '{message.Channel}', {message.Author.Username} said '{message}'");
 
 			if (message == null) { return; }
 			if (message.Author.IsBot) { return; }
 
-			var context = new SocketCommandContext(client, message);
+			var context = new SocketCommandContext(client, message as SocketUserMessage);
 			if (context.Channel != messageHandler.Channel) { return; }
 
 			await context.Channel.SendMessageAsync(message.Content + "……って言いました？");

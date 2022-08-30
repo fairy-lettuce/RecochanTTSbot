@@ -49,12 +49,12 @@ namespace TextToSpeechBot
 
 			using (var httpClient = new HttpClient())
 			{
-				var response = httpClient.PostAsync($"{url}/audio_query?text={encodeText}&speaker=0", content).GetAwaiter().GetResult();
+				var response = await httpClient.PostAsync($"{url}/audio_query?text={encodeText}&speaker=0", content);
 				if (!response.IsSuccessStatusCode) return null;
 				queryData = response.Content.ReadAsStringAsync().GetAwaiter().GetResult();
 
 				content = new StringContent(queryData, Encoding.UTF8, @"application/json");
-				response = httpClient.PostAsync($"{url}/synthesis?speaker=0", content).GetAwaiter().GetResult();
+				response = await httpClient.PostAsync($"{url}/synthesis?speaker=0", content);
 				if (response.StatusCode != HttpStatusCode.OK) { return null; }
 
 				var soundData = response.Content.ReadAsStreamAsync().GetAwaiter().GetResult();
